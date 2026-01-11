@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Interactive Video Player</title>
+  <link href="https://vjs.zencdn.net/8.10.0/video-js.css" rel="stylesheet" />
+  <script src="https://vjs.zencdn.net/8.10.0/video.min.js"></script>
+  <style>
+    body {
+      background: #0a0a0a;
+      color: #fff;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      text-align: center;
+      padding: 20px;
+      margin: 0;
+    }
+    .video-container {
+      position: relative;
+      max-width: 900px;
+      margin: 40px auto;
+    }
+    .video-js {
+      width: 900px;
+      height: 506px;
+    }
+    .vjs-default-skin {
+      --vjs-theme-color: #00b4d8;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    .anatomy-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.05);
+      display: none;
+      z-index: 10;
+    }
+
+    .anatomy-overlay.visible {
+      display: block;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .anatomy-marker {
+      position: absolute;
+      width: 26px;
+      height: 26px;
+      background: linear-gradient(135deg, #00b4d8 0%, #48cae4 100%);
+      border: 3px solid white;
+      border-radius: 50%;
+      cursor: pointer;
+      z-index: 11;
+      box-shadow: 0 0 20px rgba(0, 180, 216, 0.6), 0 0 40px rgba(0, 180, 216, 0.3);
+      animation: smoothPulse 2s ease-in-out infinite;
+    }
+
+    .anatomy-marker:hover {
+      animation: smoothPulseHover 1.5s ease-in-out infinite;
+      z-index: 12;
+    }
+
+    @keyframes smoothPulse {
+      0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 0 20px rgba(0, 180, 216, 0.6), 0 0 40px rgba(0, 180, 216, 0.3);
+      }
+      50% {
+        transform: scale(1.08);
+        box-shadow: 0 0 30px rgba(0, 180, 216, 0.8), 0 0 60px rgba(0, 180, 216, 0.5);
+      }
+    }
+
+    @keyframes smoothPulseHover {
+      0%, 100% {
+        transform: scale(1.5);
+        box-shadow: 0 0 35px rgba(0, 180, 216, 0.9), 0 0 70px rgba(0, 180, 216, 0.6);
+      }
+      50% {
+        transform: scale(1.58);
+        box-shadow: 0 0 45px rgba(0, 180, 216, 1), 0 0 90px rgba(0, 180, 216, 0.8);
+      }
+    }
+
+    .anatomy-marker-label {
+      position: absolute;
+      bottom: -32px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: linear-gradient(135deg, #1a1a1a 0%, #0a0a0a 100%);
+      color: white;
+      padding: 7px 15px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      white-space: nowrap;
+      opacity: 0;
+      transition: opacity 0.4s ease, transform 0.4s ease;
+      pointer-events: none;
+      border: 1px solid rgba(0, 180, 216, 0.4);
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+      letter-spacing: 0.3px;
+    }
+
+    .anatomy-marker:hover .anatomy-marker-label {
+      opacity: 1;
+      transform: translateX(-50%) translateY(-2px);
+    }
+
+    .anatomy-info-card {
+      position: absolute;
+      left: 30px;
+      top: 50%;
+      transform: translateY(-50%) translateX(-400px);
+      width: 340px;
+      background: linear-gradient(145deg, #1f1f1f 0%, #0a0a0a 100%);
+      border-radius: 20px;
+      padding: 30px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+      z-index: 12;
+      transition: transform 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+      display: none;
+      border: 1px solid rgba(0, 180, 216, 0.2);
+    }
+
+    .anatomy-info-card.visible {
+      display: block;
+      transform: translateY(-50%) translateX(0);
+    }
+
+    .anatomy-info-card h3 {
+      background: linear-gradient(90deg, #00b4d8 0%, #48cae4 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-top: 0;
+      margin-bottom: 18px;
+      font-size: 26px;
+      font-weight: 700;
+    }
+
+    .anatomy-info-card p {
+      color: #ddd;
+      line-height: 1.7;
+      margin-bottom: 14px;
+      font-size: 14px;
+    }
+
+    .anatomy-info-card .fun-fact {
+      background: rgba(0, 180, 216, 0.1);
+      padding: 15px;
+      border-left: 4px solid #00b4d8;
+      border-radius: 8px;
+      margin-top: 18px;
+      font-size: 13px;
+      color: #bbb;
+      line-height: 1.6;
+    }
+
+    .anatomy-info-card .close-card-btn {
+      background: linear-gradient(135deg, #0096c7 0%, #00b4d8 50%, #48cae4 100%);
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 10px;
+      cursor: pointer;
+      margin-top: 20px;
+      font-size: 14px;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      width: 100%;
+      box-shadow: 0 4px 15px rgba(0, 180, 216, 0.3);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .anatomy-info-card .close-card-btn::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+      transition: left 0.5s;
+    }
+
+    .anatomy-info-card .close-card-btn:hover::before {
+      left: 100%;
+    }
+
+    .anatomy-info-card .close-card-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(0, 180, 216, 0.4);
+    }
+
+    .anatomy-continue-btn {
+      position: absolute;
+      bottom: 60px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: linear-gradient(135deg, #00b4d8 0%, #48cae4 50%, #90e0ef 100%);
+      color: white;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      padding: 18px 50px;
+      border-radius: 16px;
+      font-size: 18px;
+      font-weight: 700;
+      cursor: pointer;
+      z-index: 11;
+      transition: all 0.3s ease;
+      box-shadow: 0 10px 35px rgba(0, 180, 216, 0.8), 0 0 30px rgba(0, 180, 216, 0.4);
+      overflow: hidden;
+      letter-spacing: 0.5px;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    }
+
+    .anatomy-continue-btn::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+      transition: left 0.5s;
+    }
+
+    .anatomy-continue-btn:hover::before {
+      left: 100%;
+    }
+
+    .anatomy-continue-btn:hover {
+      transform: translateX(-50%) translateY(-3px) scale(1.05);
+      box-shadow: 0 15px 45px rgba(0, 180, 216, 1), 0 0 40px rgba(72, 202, 228, 0.6);
+      border-color: rgba(255, 255, 255, 0.5);
+    }
+
+    .anatomy-hint {
+      position: absolute;
+      top: 50%;
+      left: 30%;
+      transform: translate(-50%, -50%);
+      background: linear-gradient(135deg, #1a1a1a 0%, #0a0a0a 100%);
+      color: white;
+      padding: 12px 24px;
+      border-radius: 14px;
+      font-size: 16px;
+      font-weight: 600;
+      z-index: 11;
+      animation: strongPulse 2s ease-in-out infinite;
+      border: 2px solid rgba(0, 180, 216, 0.6);
+      box-shadow: 0 8px 30px rgba(0, 180, 216, 0.4);
+      letter-spacing: 0.3px;
+      max-width: 240px;
+      text-align: center;
+      line-height: 1.3;
+      transition: opacity 0.3s ease;
+    }
+
+    .anatomy-hint.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    @keyframes strongPulse {
+      0%, 100% { 
+        opacity: 0.8;
+        transform: translate(-50%, -50%) scale(1);
+        box-shadow: 0 8px 30px rgba(0, 180, 216, 0.4);
+      }
+      50% { 
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1.08);
+        box-shadow: 0 12px 40px rgba(0, 180, 216, 0.7);
+      }
+    }
+
+    .style-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.9);
+      display: none;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 10;
+      padding: 20px;
+      box-sizing: border-box;
+      backdrop-filter: blur(10px);
+    }
+
+    .style-overlay.visible {
+      display: flex;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .style-container {
+      background: linear-gradient(145deg, #1f1f1f 0%, #0a0a0a 100%);
+      padding: 35px;
+      border-radius: 20px;
+      max-width: 420px;
+      width: 90%;
+      border: 1px solid rgba(0, 180, 216, 0.2);
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    }
+
+    .style-container h2 {
+      background: linear-gradient(90deg, #00b4d8 0%, #48cae4 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-top: 0;
+      margin-bottom: 25px;
+      font-size: 22px;
+      line-height: 1.3;
+      font-weight: 600;
+    }
+
+    .style-options {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 15px;
+    }
+
+    .style-btn {
+      background: linear-gradient(135deg, #0096c7 0%, #00b4d8 50%, #48cae4 100%);
+      color: white;
+      border: none;
+      padding: 14px 20px;
+      font-size: 15px;
+      font-weight: 500;
+      cursor: pointer;
+      border-radius: 12px;
+      transition: all 0.3s ease;
+      text-align: left;
+      box-shadow: 0 4px 15px rgba(0, 180, 216, 0.3);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .style-btn::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+      transition: left 0.5s;
+    }
+
+    .style-btn:hover::before {
+      left: 100%;
+    }
+
+    .style-btn:hover {
+      transform: translateX(5px);
+      box-shadow: 0 6px 20px rgba(0, 180, 216, 0.4);
+    }
+
+    .close-style-btn {
+      background: rgba(255, 255, 255, 0.05);
+      color: #999;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 12px 20px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      border-radius: 12px;
+      transition: all 0.3s ease;
+      width: 100%;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .close-style-btn::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+      transition: left 0.5s;
+    }
+
+    .close-style-btn:hover::before {
+      left: 100%;
+    }
+
+    .close-style-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: #ddd;
+    }
+
+    .interactive-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.9);
+      display: none;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 10;
+      padding: 20px;
+      box-sizing: border-box;
+      backdrop-filter: blur(10px);
+    }
+
+    .interactive-overlay.visible {
+      display: flex;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .question-container {
+      background: linear-gradient(145deg, #1f1f1f 0%, #0a0a0a 100%);
+      padding: 35px;
+      border-radius: 20px;
+      max-width: 420px;
+      width: 90%;
+      border: 1px solid rgba(0, 180, 216, 0.2);
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    }
+
+    .question-container h2 {
+      background: linear-gradient(90deg, #00b4d8 0%, #48cae4 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-top: 0;
+      margin-bottom: 25px;
+      font-size: 22px;
+      line-height: 1.3;
+      font-weight: 600;
+    }
+
+    .options {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 0;
+    }
+
+    .option-btn {
+      background: linear-gradient(135deg, #0096c7 0%, #00b4d8 50%, #48cae4 100%);
+      color: white;
+      border: none;
+      padding: 14px 20px;
+      font-size: 15px;
+      font-weight: 500;
+      cursor: pointer;
+      border-radius: 12px;
+      transition: all 0.3s ease;
+      text-align: left;
+      box-shadow: 0 4px 15px rgba(0, 180, 216, 0.3);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .option-btn::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+      transition: left 0.5s;
+    }
+
+    .option-btn:hover::before {
+      left: 100%;
+    }
+
+    .option-btn:hover {
+      transform: translateX(5px);
+      box-shadow: 0 6px 20px rgba(0, 180, 216, 0.4);
+    }
+
+    .contact-info {
+      display: none;
+      text-align: center;
+    }
+
+    .contact-info.visible {
+      display: block;
+    }
+
+    .contact-info h3 {
+      background: linear-gradient(90deg, #00b4d8 0%, #48cae4 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      font-size: 24px;
+      margin-bottom: 25px;
+      font-weight: 700;
+    }
+
+    .contact-info p {
+      font-size: 17px;
+      color: #ddd;
+      margin: 15px 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+
+    .contact-info a {
+      color: #48cae4;
+      text-decoration: none;
+      font-weight: 600;
+      transition: all 0.3s ease;
+    }
+
+    .contact-info a:hover {
+      color: #90e0ef;
+    }
+
+    .watch-again-btn {
+      background: linear-gradient(135deg, #0096c7 0%, #00b4d8 50%, #48cae4 100%);
+      color: white;
+      border: none;
+      padding: 14px 40px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      border-radius: 12px;
+      transition: all 0.3s ease;
+      margin-top: 25px;
+      width: 100%;
+      box-shadow: 0 4px 15px rgba(0, 180, 216, 0.3);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .watch-again-btn::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+      transition: left 0.5s;
+    }
+
+    .watch-again-btn:hover::before {
+      left: 100%;
+    }
+
+    .watch-again-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(0, 180, 216, 0.4);
+    }
+
+    .vjs-marker {
+      position: absolute;
+      top: 50%;
+      width: 14px;
+      height: 14px;
+      background: linear-gradient(135deg, #00b4d8 0%, #48cae4 100%);
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      cursor: pointer;
+      z-index: 5;
+      pointer-events: auto;
+      transition: all 0.2s ease;
+      user-select: none;
+      box-shadow: 0 0 10px rgba(0, 180, 216, 0.5);
+    }
+
+    .vjs-marker:hover {
+      transform: translate(-50%, -50%) scale(1.7);
+      box-shadow: 0 0 20px rgba(0, 180, 216, 0.8);
+    }
+
+    .tooltip {
+      position: absolute;
+      background: linear-gradient(135deg, #0096c7 0%, #00b4d8 100%);
+      color: white;
+      padding: 6px 12px;
+      font-size: 12px;
+      font-weight: 500;
+      border-radius: 8px;
+      white-space: nowrap;
+      transform: translate(-50%, -130%);
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+      z-index: 6;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    .vjs-marker:hover .tooltip {
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+
+<div class="video-container">
+  <video id="my-video" class="video-js vjs-default-skin" controls preload="auto" data-setup='{}'>
+    <source src="video.mp4" type="video/mp4" />
+  </video>
+
+  <div class="anatomy-overlay" id="anatomy-overlay">
+    <div class="anatomy-hint">Click on the heart markers to explore</div>
+    
+    <div class="anatomy-marker" style="left: 68%; top: 52%;" data-organ="heart">
+      <div class="anatomy-marker-label">Heart</div>
+    </div>
+    
+    <div class="anatomy-marker" style="left: 71%; top: 20%;" data-organ="aorta">
+      <div class="anatomy-marker-label">Aorta</div>
+    </div>
+    
+    <div class="anatomy-marker" style="left: 73%; top: 28%;" data-organ="arteries">
+      <div class="anatomy-marker-label">Arteries</div>
+    </div>
+    
+    <div class="anatomy-marker" style="left: 58%; top: 22%;" data-organ="veins">
+      <div class="anatomy-marker-label">Veins</div>
+    </div>
+
+    <div class="anatomy-info-card" id="anatomy-card">
+      <h3 id="organ-name">Heart</h3>
+      <p id="organ-description">The heart is a muscular organ that pumps blood throughout your body.</p>
+      <p id="organ-function"><strong>Function:</strong> Circulates oxygen and nutrients to tissues.</p>
+      <div class="fun-fact" id="organ-fact">
+        <strong>Interesting fact:</strong> Your heart beats about 100,000 times per day!
+      </div>
+      <button class="close-card-btn" id="close-anatomy-card">Close</button>
+    </div>
+
+    <button class="anatomy-continue-btn" id="continue-anatomy">Continue Video</button>
+  </div>
+
+  <div class="style-overlay" id="style-overlay">
+    <div class="style-container">
+      <h2>Choose your style</h2>
+      <div class="style-options">
+        <button class="style-btn" data-url="https://youtu.be/I3Jgce8Ibvg">2D explainers</button>
+        <button class="style-btn" data-url="https://youtu.be/BLbHR7CQBrA">3D visualization</button>
+        <button class="style-btn" data-url="https://youtu.be/nBBRqCJNHi8">Mix motion design + real footage</button>
+      </div>
+      <button class="close-style-btn" id="close-style">Continue watching</button>
+    </div>
+  </div>
+
+  <div class="interactive-overlay" id="overlay">
+    <div class="question-container">
+      <div id="question-section">
+        <h2>Where could this format be useful in your work?</h2>
+        <div class="options">
+          <button class="option-btn">Product or therapy area training</button>
+          <button class="option-btn">Medical device usage tutorials</button>
+          <button class="option-btn">Field force learning & updates</button>
+        </div>
+      </div>
+      
+      <div class="contact-info" id="contact-section">
+        <h3>We'd appreciate your feedback!</h3>
+        <h3 style="font-size: 20px;">Connect with our Account Executive</h3>
+        <p>Email: <a href="#" id="email-link"><span id="email-display"></span></a></p>
+        <p>Phone: <a href="tel:+48799354938">+48 799 35 49 38</a></p>
+        <button class="watch-again-btn" id="watch-again">Watch Again</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const player = videojs('my-video');
+  
+  const anatomyOverlay = document.getElementById('anatomy-overlay');
+  const endOverlay = document.getElementById('overlay');
+  
+  const anatomyMarkers = document.querySelectorAll('.anatomy-marker');
+  const anatomyCard = document.getElementById('anatomy-card');
+  const anatomyHint = document.querySelector('.anatomy-hint');
+  const continueAnatomyBtn = document.getElementById('continue-anatomy');
+  const closeAnatomyCardBtn = document.getElementById('close-anatomy-card');
+  
+  const questionSection = document.getElementById('question-section');
+  const contactSection = document.getElementById('contact-section');
+  const optionButtons = document.querySelectorAll('.option-btn');
+  const watchAgainBtn = document.getElementById('watch-again');
+  
+  let anatomyShown = false;
+  let endShown = false;
+
+
+  const anatomyData = {
+    heart: {
+      name: "Heart",
+      description: "The heart is a muscular organ that pumps blood throughout your body, delivering oxygen and nutrients to all tissues.",
+      function: "Pumps oxygenated blood to the body and deoxygenated blood to the lungs.",
+      fact: "Your heart beats about 100,000 times per day, pumping roughly 2,000 gallons of blood!"
+    },
+    aorta: {
+      name: "Aorta",
+      description: "The aorta is the largest artery in the body, originating from the left ventricle of the heart.",
+      function: "Carries oxygen-rich blood from the heart to all parts of the body.",
+      fact: "The aorta can be as thick as a garden hose and is about 1 foot long in adults!"
+    },
+    arteries: {
+      name: "Arteries",
+      description: "Arteries are blood vessels that carry blood away from the heart to various parts of the body.",
+      function: "Transport oxygenated blood under high pressure to organs and tissues.",
+      fact: "Arteries have thick, elastic walls that can withstand high blood pressure from each heartbeat!"
+    },
+    veins: {
+      name: "Veins",
+      description: "Veins are blood vessels that carry blood back to the heart from the body's tissues.",
+      function: "Return deoxygenated blood to the heart and have valves to prevent backflow.",
+      fact: "Veins contain about 70% of your body's blood volume at any given time!"
+    }
+  };
+
+  player.on('timeupdate', function() {
+    const t = player.currentTime();
+    
+    if (t >= 39 && t < 39.5 && !anatomyShown) {
+      player.pause();
+      anatomyOverlay.classList.add('visible');
+      anatomyShown = true;
+    }
+    
+    if (t >= 58 && t < 58.5 && !endShown) {
+      player.pause();
+      endOverlay.classList.add('visible');
+      endShown = true;
+    }
+  });
+
+  anatomyMarkers.forEach(function(marker) {
+    marker.addEventListener('click', function() {
+      const organ = marker.getAttribute('data-organ');
+      const data = anatomyData[organ];
+      
+      document.getElementById('organ-name').textContent = data.name;
+      document.getElementById('organ-description').textContent = data.description;
+      document.getElementById('organ-function').innerHTML = '<strong>Function:</strong> ' + data.function;
+      document.getElementById('organ-fact').innerHTML = '<strong>Interesting fact:</strong> ' + data.fact;
+      
+      anatomyCard.classList.add('visible');
+      anatomyHint.classList.add('hidden');
+    });
+  });
+
+  closeAnatomyCardBtn.addEventListener('click', function() {
+    anatomyCard.classList.remove('visible');
+    anatomyHint.classList.remove('hidden');
+  });
+
+  continueAnatomyBtn.addEventListener('click', function() {
+    anatomyOverlay.classList.remove('visible');
+    anatomyCard.classList.remove('visible');
+    anatomyHint.classList.remove('hidden');
+    player.play();
+  });
+
+  player.on('ended', function() {
+    endOverlay.classList.add('visible');
+  });
+
+  optionButtons.forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      questionSection.style.display = 'none';
+      contactSection.classList.add('visible');
+    });
+  });
+
+  watchAgainBtn.addEventListener('click', function() {
+    // Сбрасываем все флаги триггеров
+    anatomyShown = false;
+    endShown = false;
+    
+    // Сбрасываем видео и UI
+    player.currentTime(0);
+    endOverlay.classList.remove('visible');
+    questionSection.style.display = 'block';
+    contactSection.classList.remove('visible');
+    player.play();
+  });
+
+  player.on('loadedmetadata', function() {
+    const duration = player.duration();
+    
+    const progressControl = player.controlBar.progressControl;
+    const bar = progressControl.seekBar.el();
+
+    const markers = [
+      { time: 39, label: 'Cardiovascular System' },
+      { time: 58, label: 'Interactive Question' }
+    ];
+
+    markers.forEach(function(m) {
+      const marker = document.createElement('div');
+      marker.className = 'vjs-marker';
+      marker.style.left = (m.time / duration * 100) + '%';
+
+      const tooltip = document.createElement('div');
+      tooltip.className = 'tooltip';
+      tooltip.textContent = m.label;
+
+      marker.appendChild(tooltip);
+      bar.appendChild(marker);
+    });
+  });
+
+  // Email protection from bots
+  (function() {
+    const user = 'sales';
+    const domain = 'nanobotmedical' + '.' + 'com';
+    const email = user + '@' + domain;
+    const emailLink = document.getElementById('email-link');
+    const emailDisplay = document.getElementById('email-display');
+    if (emailLink && emailDisplay) {
+      emailLink.href = 'mailto:' + email;
+      emailDisplay.textContent = email;
+    }
+  })();
+</script>
+
+</body>
+</html>
