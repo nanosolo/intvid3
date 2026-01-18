@@ -2,686 +2,1100 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Quiz Statistics</title>
+  <title>Interactive Video Player</title>
+  <link href="https://vjs.zencdn.net/8.10.0/video-js.css" rel="stylesheet" />
+  <script src="https://vjs.zencdn.net/8.10.0/video.min.js"></script>
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-
     body {
       background: #0a0a0a;
       color: #fff;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-      padding: 40px 20px;
-      min-height: 100vh;
+      text-align: center;
+      padding: 20px;
+      margin: 0;
+    }
+    .video-container {
+      position: relative;
+      max-width: 900px;
+      margin: 40px auto;
+    }
+    .video-js {
+      width: 900px;
+      height: 506px;
+    }
+    .vjs-default-skin {
+      --vjs-theme-color: #00b4d8;
     }
 
-    .container {
-      max-width: 1400px;
-      margin: 0 auto;
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
     }
 
-    .main-layout {
-      display: grid;
-      grid-template-columns: 650px 1fr;
-      gap: 30px;
-      align-items: start;
+    .anatomy-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.05);
+      display: none;
+      z-index: 10;
     }
 
-    @media (max-width: 1200px) {
-      .main-layout {
-        grid-template-columns: 1fr;
+    .anatomy-overlay.visible {
+      display: block;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .anatomy-marker {
+      position: absolute;
+      width: 26px;
+      height: 26px;
+      background: linear-gradient(135deg, #00b4d8 0%, #48cae4 100%);
+      border: 3px solid white;
+      border-radius: 50%;
+      cursor: pointer;
+      z-index: 11;
+      box-shadow: 0 0 20px rgba(0, 180, 216, 0.6), 0 0 40px rgba(0, 180, 216, 0.3);
+      animation: smoothPulse 2s ease-in-out infinite;
+    }
+
+    .anatomy-marker:hover {
+      animation: smoothPulseHover 1.5s ease-in-out infinite;
+      z-index: 12;
+    }
+
+    @keyframes smoothPulse {
+      0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 0 20px rgba(0, 180, 216, 0.6), 0 0 40px rgba(0, 180, 216, 0.3);
+      }
+      50% {
+        transform: scale(1.08);
+        box-shadow: 0 0 30px rgba(0, 180, 216, 0.8), 0 0 60px rgba(0, 180, 216, 0.5);
       }
     }
 
-    h1 {
-      text-align: center;
-      background: linear-gradient(90deg, #00b4d8 0%, #48cae4 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-      font-size: 36px;
-      margin-bottom: 30px;
+    @keyframes smoothPulseHover {
+      0%, 100% {
+        transform: scale(1.5);
+        box-shadow: 0 0 35px rgba(0, 180, 216, 0.9), 0 0 70px rgba(0, 180, 216, 0.6);
+      }
+      50% {
+        transform: scale(1.58);
+        box-shadow: 0 0 45px rgba(0, 180, 216, 1), 0 0 90px rgba(0, 180, 216, 0.8);
+      }
     }
 
-    .fade-update {
-      opacity: 0.5;
-      transition: opacity 0.3s ease;
-    }
-
-    .stats-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 20px;
-      margin-bottom: 25px;
-    }
-
-    .stat-card {
-      background: linear-gradient(145deg, #1f1f1f 0%, #0a0a0a 100%);
-      padding: 20px;
-      border-radius: 16px;
-      border: 1px solid rgba(0, 180, 216, 0.2);
-      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
-    }
-
-    .stat-card h2 {
-      color: #48cae4;
-      font-size: 14px;
-      margin-bottom: 10px;
-      font-weight: 600;
-    }
-
-    .stat-number {
-      font-size: 36px;
-      font-weight: 700;
-      background: linear-gradient(90deg, #00b4d8 0%, #48cae4 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
-
-    .stat-label {
-      color: #999;
-      font-size: 12px;
-      margin-top: 4px;
-    }
-
-    .options-stats {
-      background: linear-gradient(145deg, #1f1f1f 0%, #0a0a0a 100%);
-      padding: 30px;
-      border-radius: 20px;
-      border: 1px solid rgba(0, 180, 216, 0.2);
-      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
-      margin-bottom: 40px;
-    }
-
-    .options-stats h2 {
-      color: #48cae4;
-      font-size: 24px;
-      margin-bottom: 25px;
-      font-weight: 600;
-    }
-
-    .option-bar {
-      margin-bottom: 20px;
-    }
-
-    .option-name {
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: 8px;
-      font-size: 15px;
-    }
-
-    .option-name span:first-child {
-      color: #ddd;
-    }
-
-    .option-name span:last-child {
-      color: #48cae4;
-      font-weight: 600;
-    }
-
-    .progress-bar {
-      height: 12px;
-      background: rgba(255, 255, 255, 0.1);
-      border-radius: 6px;
-      overflow: hidden;
-    }
-
-    .progress-fill {
-      height: 100%;
-      background: linear-gradient(90deg, #0096c7 0%, #00b4d8 50%, #48cae4 100%);
-      border-radius: 6px;
-      transition: width 1s ease;
-    }
-
-    .custom-answers {
-      background: linear-gradient(145deg, #1f1f1f 0%, #0a0a0a 100%);
-      padding: 25px;
-      border-radius: 20px;
-      border: 1px solid rgba(0, 180, 216, 0.2);
-      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
-      position: sticky;
-      top: 20px;
-      max-height: calc(100vh - 40px);
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .custom-answers h2 {
-      color: #48cae4;
-      font-size: 20px;
-      margin-bottom: 20px;
-      font-weight: 600;
-      flex-shrink: 0;
-    }
-
-    .answers-container {
-      overflow-y: auto;
-      flex: 1;
-      margin-bottom: 15px;
-    }
-
-    .answers-container::-webkit-scrollbar {
-      width: 6px;
-    }
-
-    .answers-container::-webkit-scrollbar-track {
-      background: rgba(255, 255, 255, 0.05);
-      border-radius: 3px;
-    }
-
-    .answers-container::-webkit-scrollbar-thumb {
-      background: rgba(0, 180, 216, 0.3);
-      border-radius: 3px;
-    }
-
-    .answers-container::-webkit-scrollbar-thumb:hover {
-      background: rgba(0, 180, 216, 0.5);
-    }
-
-    .answer-item {
-      background: rgba(255, 255, 255, 0.05);
-      padding: 12px 15px;
-      border-radius: 10px;
-      margin-bottom: 12px;
-      border-left: 3px solid #00b4d8;
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      gap: 12px;
-      transition: all 0.3s ease;
-    }
-
-    .answer-item:hover {
-      background: rgba(255, 255, 255, 0.08);
-    }
-
-    .answer-item.hidden {
-      display: none;
-    }
-
-    .answer-content {
-      flex: 1;
-    }
-
-    .answer-text {
-      color: #ddd;
-      font-size: 14px;
-      margin-bottom: 6px;
-      line-height: 1.4;
-    }
-
-    .answer-time {
-      color: #666;
-      font-size: 11px;
-    }
-
-    .delete-answer-btn {
-      background: transparent;
-      border: none;
-      color: #ff6b6b;
-      cursor: pointer;
-      padding: 4px;
-      border-radius: 6px;
-      transition: all 0.2s ease;
-      flex-shrink: 0;
-      width: 28px;
-      height: 28px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      opacity: 0.6;
-    }
-
-    .delete-answer-btn:hover {
-      opacity: 1;
-      background: rgba(255, 107, 107, 0.1);
-    }
-
-    .delete-answer-btn svg {
-      width: 16px;
-      height: 16px;
-    }
-
-    .show-more-btn {
-      background: linear-gradient(135deg, #0096c7 0%, #00b4d8 50%, #48cae4 100%);
+    .anatomy-marker-label {
+      position: absolute;
+      bottom: -32px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: linear-gradient(135deg, #1a1a1a 0%, #0a0a0a 100%);
       color: white;
-      border: none;
-      padding: 10px 20px;
+      padding: 7px 15px;
       border-radius: 10px;
       font-size: 13px;
       font-weight: 600;
-      cursor: pointer;
-      transition: all 0.3s ease;
-      box-shadow: 0 4px 15px rgba(0, 180, 216, 0.3);
-      width: 100%;
-      flex-shrink: 0;
+      white-space: nowrap;
+      opacity: 0;
+      transition: opacity 0.4s ease, transform 0.4s ease;
+      pointer-events: none;
+      border: 1px solid rgba(0, 180, 216, 0.4);
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+      letter-spacing: 0.3px;
     }
 
-    .show-more-btn:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 20px rgba(0, 180, 216, 0.4);
+    .anatomy-marker:hover .anatomy-marker-label {
+      opacity: 1;
+      transform: translateX(-50%) translateY(-2px);
     }
 
-    .show-more-btn.hidden {
+    .anatomy-info-card {
+      position: absolute;
+      left: 30px;
+      top: 50%;
+      transform: translateY(-50%) translateX(-400px);
+      width: 340px;
+      background: linear-gradient(145deg, #1f1f1f 0%, #0a0a0a 100%);
+      border-radius: 20px;
+      padding: 30px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+      z-index: 12;
+      transition: transform 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
       display: none;
+      border: 1px solid rgba(0, 180, 216, 0.2);
     }
 
-    .loading {
-      text-align: center;
-      padding: 60px;
-      color: #48cae4;
-      font-size: 20px;
+    .anatomy-info-card.visible {
+      display: block;
+      transform: translateY(-50%) translateX(0);
     }
 
-    .error {
-      text-align: center;
-      padding: 60px;
-      color: #ff6b6b;
-      font-size: 18px;
+    .anatomy-info-card h3 {
+      background: linear-gradient(90deg, #00b4d8 0%, #48cae4 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-top: 0;
+      margin-bottom: 18px;
+      font-size: 26px;
+      font-weight: 700;
     }
 
-    .refresh-btn {
+    .anatomy-info-card p {
+      color: #ddd;
+      line-height: 1.7;
+      margin-bottom: 14px;
+      font-size: 14px;
+    }
+
+    .anatomy-info-card .fun-fact {
+      background: rgba(0, 180, 216, 0.1);
+      padding: 15px;
+      border-left: 4px solid #00b4d8;
+      border-radius: 8px;
+      margin-top: 18px;
+      font-size: 13px;
+      color: #bbb;
+      line-height: 1.6;
+    }
+
+    .anatomy-info-card .close-card-btn {
       background: linear-gradient(135deg, #0096c7 0%, #00b4d8 50%, #48cae4 100%);
       color: white;
       border: none;
       padding: 10px 20px;
       border-radius: 10px;
+      cursor: pointer;
+      margin-top: 20px;
       font-size: 14px;
       font-weight: 600;
-      cursor: pointer;
       transition: all 0.3s ease;
+      width: 100%;
       box-shadow: 0 4px 15px rgba(0, 180, 216, 0.3);
-      margin-bottom: 12px;
-      width: fit-content;
-      display: flex;
-      align-items: center;
-      gap: 8px;
+      position: relative;
+      overflow: hidden;
     }
 
-    .refresh-btn:hover {
+    .anatomy-info-card .close-card-btn::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+      transition: left 0.5s;
+    }
+
+    .anatomy-info-card .close-card-btn:hover::before {
+      left: 100%;
+    }
+
+    .anatomy-info-card .close-card-btn:hover {
       transform: translateY(-2px);
       box-shadow: 0 6px 20px rgba(0, 180, 216, 0.4);
     }
 
-    .refresh-btn:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-      transform: none;
-    }
-
-    .spinner {
-      width: 14px;
-      height: 14px;
+    .anatomy-continue-btn {
+      position: absolute;
+      bottom: 60px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: linear-gradient(135deg, #00b4d8 0%, #48cae4 50%, #90e0ef 100%);
+      color: white;
       border: 2px solid rgba(255, 255, 255, 0.3);
-      border-top-color: white;
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-      display: none;
+      padding: 18px 50px;
+      border-radius: 16px;
+      font-size: 18px;
+      font-weight: 700;
+      cursor: pointer;
+      z-index: 11;
+      transition: all 0.3s ease;
+      box-shadow: 0 10px 35px rgba(0, 180, 216, 0.8), 0 0 30px rgba(0, 180, 216, 0.4);
+      overflow: hidden;
+      letter-spacing: 0.5px;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
     }
 
-    .spinner.visible {
-      display: block;
+    .anatomy-continue-btn::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+      transition: left 0.5s;
     }
 
-    @keyframes spin {
-      to { transform: rotate(360deg); }
+    .anatomy-continue-btn:hover::before {
+      left: 100%;
     }
 
-    .stat-number, .option-name span:last-child, .progress-fill {
-      transition: all 0.5s ease;
+    .anatomy-continue-btn:hover {
+      transform: translateX(-50%) translateY(-3px) scale(1.05);
+      box-shadow: 0 15px 45px rgba(0, 180, 216, 1), 0 0 40px rgba(72, 202, 228, 0.6);
+      border-color: rgba(255, 255, 255, 0.5);
     }
 
-    h1 {
+    .anatomy-hint {
+      position: absolute;
+      top: 50%;
+      left: 30%;
+      transform: translate(-50%, -50%);
+      background: linear-gradient(135deg, #1a1a1a 0%, #0a0a0a 100%);
+      color: white;
+      padding: 12px 24px;
+      border-radius: 14px;
+      font-size: 16px;
+      font-weight: 600;
+      z-index: 11;
+      animation: strongPulse 2s ease-in-out infinite;
+      border: 2px solid rgba(0, 180, 216, 0.6);
+      box-shadow: 0 8px 30px rgba(0, 180, 216, 0.4);
+      letter-spacing: 0.3px;
+      max-width: 240px;
       text-align: center;
+      line-height: 1.3;
+      transition: opacity 0.3s ease;
+    }
+
+    .anatomy-hint.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    @keyframes strongPulse {
+      0%, 100% { 
+        opacity: 0.8;
+        transform: translate(-50%, -50%) scale(1);
+        box-shadow: 0 8px 30px rgba(0, 180, 216, 0.4);
+      }
+      50% { 
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1.08);
+        box-shadow: 0 12px 40px rgba(0, 180, 216, 0.7);
+      }
+    }
+
+    .style-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.9);
+      display: none;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 10;
+      padding: 20px;
+      box-sizing: border-box;
+      backdrop-filter: blur(10px);
+    }
+
+    .style-overlay.visible {
+      display: flex;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .style-container {
+      background: linear-gradient(145deg, #1f1f1f 0%, #0a0a0a 100%);
+      padding: 35px;
+      border-radius: 20px;
+      max-width: 420px;
+      width: 90%;
+      border: 1px solid rgba(0, 180, 216, 0.2);
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    }
+
+    .style-container h2 {
       background: linear-gradient(90deg, #00b4d8 0%, #48cae4 100%);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
-      font-size: 36px;
-      margin-bottom: 30px;
+      margin-top: 0;
+      margin-bottom: 25px;
+      font-size: 22px;
+      line-height: 1.3;
+      font-weight: 600;
     }
 
-    .stats-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 15px;
+    .style-options {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
       margin-bottom: 15px;
     }
 
-    .left-column {
+    .style-btn {
+      background: linear-gradient(135deg, #0096c7 0%, #00b4d8 50%, #48cae4 100%);
+      color: white;
+      border: none;
+      padding: 14px 20px;
+      font-size: 15px;
+      font-weight: 500;
+      cursor: pointer;
+      border-radius: 12px;
+      transition: all 0.3s ease;
+      text-align: left;
+      box-shadow: 0 4px 15px rgba(0, 180, 216, 0.3);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .style-btn::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+      transition: left 0.5s;
+    }
+
+    .style-btn:hover::before {
+      left: 100%;
+    }
+
+    .style-btn:hover {
+      transform: translateX(5px);
+      box-shadow: 0 6px 20px rgba(0, 180, 216, 0.4);
+    }
+
+    .close-style-btn {
+      background: rgba(255, 255, 255, 0.05);
+      color: #999;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 12px 20px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      border-radius: 12px;
+      transition: all 0.3s ease;
+      width: 100%;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .close-style-btn::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+      transition: left 0.5s;
+    }
+
+    .close-style-btn:hover::before {
+      left: 100%;
+    }
+
+    .close-style-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: #ddd;
+    }
+
+    .interactive-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.9);
+      display: none;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 10;
+      padding: 20px;
+      box-sizing: border-box;
+      backdrop-filter: blur(10px);
+    }
+
+    .interactive-overlay.visible {
+      display: flex;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .question-container {
+      position: relative;
+      background: linear-gradient(145deg, #1f1f1f 0%, #0a0a0a 100%);
+      padding: 35px;
+      border-radius: 20px;
+      max-width: 420px;
+      width: 90%;
+      border: 1px solid rgba(0, 180, 216, 0.2);
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    }
+
+    .question-container h2 {
+      background: linear-gradient(90deg, #00b4d8 0%, #48cae4 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-top: 0;
+      margin-bottom: 25px;
+      font-size: 22px;
+      line-height: 1.3;
+      font-weight: 600;
+    }
+
+    .options {
       display: flex;
       flex-direction: column;
-      gap: 15px;
+      gap: 12px;
+      margin-bottom: 0;
+    }
+
+    .option-btn {
+      background: linear-gradient(135deg, #0096c7 0%, #00b4d8 50%, #48cae4 100%);
+      color: white;
+      border: none;
+      padding: 14px 20px;
+      font-size: 15px;
+      font-weight: 500;
+      cursor: pointer;
+      border-radius: 12px;
+      transition: all 0.3s ease;
+      text-align: left;
+      box-shadow: 0 4px 15px rgba(0, 180, 216, 0.3);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .option-btn::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+      transition: left 0.5s;
+    }
+
+    .option-btn:hover::before {
+      left: 100%;
+    }
+
+    .option-btn:hover {
+      transform: translateX(5px);
+      box-shadow: 0 6px 20px rgba(0, 180, 216, 0.4);
+    }
+
+    .contact-info {
+      display: none;
+      text-align: center;
+    }
+
+    .contact-info.visible {
+      display: block;
+    }
+
+    .contact-info h3 {
+      background: linear-gradient(90deg, #00b4d8 0%, #48cae4 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      font-size: 24px;
+      margin-bottom: 25px;
+      font-weight: 700;
+    }
+
+    .contact-info p {
+      font-size: 17px;
+      color: #ddd;
+      margin: 15px 0;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 10px;
+    }
+
+    .contact-info a {
+      color: #48cae4;
+      text-decoration: none;
+      font-weight: 600;
+      transition: all 0.3s ease;
+    }
+
+    .contact-info a:hover {
+      color: #90e0ef;
+    }
+
+    .watch-again-btn {
+      background: linear-gradient(135deg, #0096c7 0%, #00b4d8 50%, #48cae4 100%);
+      color: white;
+      border: none;
+      padding: 14px 40px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      border-radius: 12px;
+      transition: all 0.3s ease;
+      margin-top: 25px;
+      width: 100%;
+      box-shadow: 0 4px 15px rgba(0, 180, 216, 0.3);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .watch-again-btn::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+      transition: left 0.5s;
+    }
+
+    .watch-again-btn:hover::before {
+      left: 100%;
+    }
+
+    .watch-again-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(0, 180, 216, 0.4);
+    }
+
+    .vjs-marker {
+      position: absolute;
+      top: 50%;
+      width: 14px;
+      height: 14px;
+      background: linear-gradient(135deg, #00b4d8 0%, #48cae4 100%);
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      cursor: pointer;
+      z-index: 5;
+      pointer-events: auto;
+      transition: all 0.2s ease;
+      user-select: none;
+      box-shadow: 0 0 10px rgba(0, 180, 216, 0.5);
+    }
+
+    .vjs-marker:hover {
+      transform: translate(-50%, -50%) scale(1.7);
+      box-shadow: 0 0 20px rgba(0, 180, 216, 0.8);
+    }
+
+    .tooltip {
+      position: absolute;
+      background: linear-gradient(135deg, #0096c7 0%, #00b4d8 100%);
+      color: white;
+      padding: 6px 12px;
+      font-size: 12px;
+      font-weight: 500;
+      border-radius: 8px;
+      white-space: nowrap;
+      transform: translate(-50%, -130%);
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+      z-index: 6;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    .vjs-marker:hover .tooltip {
+      opacity: 1;
+    }
+
+    .back-btn {
+      position: absolute;
+      top: 15px;
+      left: 20px;
+      width: 24px;
+      height: 24px;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      z-index: 13;
+      transition: all 0.2s ease;
+      padding: 0;
+    }
+
+    .back-btn:hover {
+      opacity: 0.6;
+      transform: translateX(-2px);
+    }
+
+    .back-btn::before {
+      content: '';
+      position: absolute;
+      width: 12px;
+      height: 12px;
+      border-left: 2px solid rgba(255, 255, 255, 0.6);
+      border-bottom: 2px solid rgba(255, 255, 255, 0.6);
+      transform: rotate(45deg);
+      top: 6px;
+      left: 8px;
+    }
+
+    .back-btn::after {
+      content: attr(data-tooltip);
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      margin-top: 8px;
+      background: rgba(0, 0, 0, 0.8);
+      color: white;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      white-space: nowrap;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+    }
+
+    .back-btn:hover::after {
+      opacity: 1;
+    }
+
+    .custom-input-container {
+      margin-top: 20px;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .custom-input {
+      flex: 1;
+      background: rgba(255, 255, 255, 0.1);
+      border: 2px solid rgba(0, 180, 216, 0.3);
+      border-radius: 12px;
+      padding: 12px 18px;
+      color: white;
+      font-size: 15px;
+      font-family: inherit;
+      transition: all 0.3s ease;
+    }
+
+    .custom-input:focus {
+      outline: none;
+      border-color: #00b4d8;
+      background: rgba(255, 255, 255, 0.15);
+      box-shadow: 0 0 15px rgba(0, 180, 216, 0.3);
+    }
+
+    .custom-input::placeholder {
+      color: rgba(255, 255, 255, 0.5);
+    }
+
+    .submit-custom-btn {
+      height: 50px;
+      padding: 0 24px;
+      background: linear-gradient(135deg, #0096c7 0%, #00b4d8 50%, #48cae4 100%);
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 15px rgba(0, 180, 216, 0.3);
+      flex-shrink: 0;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .submit-custom-btn::before {
+      content: 'Send';
+      color: white;
+      font-size: 16px;
+      font-weight: 500;
+      line-height: 1;
+      z-index: 1;
+      position: relative;
+    }
+
+    .submit-custom-btn::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+      transition: left 0.5s;
+    }
+
+    .submit-custom-btn:hover::after {
+      left: 100%;
+    }
+
+    .submit-custom-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(0, 180, 216, 0.4);
+    }
+
+    .book-meeting-btn {
+      background: linear-gradient(135deg, #0096c7 0%, #00b4d8 50%, #48cae4 100%);
+      color: #ffffff !important;
+      border: none;
+      padding: 14px 30px;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 15px rgba(0, 180, 216, 0.3);
+      margin-bottom: 25px;
+      text-decoration: none;
+      display: inline-block;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .book-meeting-btn::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+      transition: left 0.5s;
+    }
+
+    .book-meeting-btn:hover::before {
+      left: 100%;
+    }
+
+    .book-meeting-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(0, 180, 216, 0.4);
+    }
+
+    .contact-info p {
+      text-align: left;
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>Quiz Statistics</h1>
 
-    <div id="content">
-      <div class="loading">Loading statistics...</div>
+<div class="video-container">
+  <video id="my-video" class="video-js vjs-default-skin" controls preload="auto" data-setup='{}'>
+    <source src="video.mp4" type="video/mp4" />
+  </video>
+
+  <div class="anatomy-overlay" id="anatomy-overlay">
+    <div class="anatomy-hint">Click on the heart markers to explore</div>
+    
+    <div class="anatomy-marker" style="left: 68%; top: 52%;" data-organ="heart">
+      <div class="anatomy-marker-label">Heart</div>
+    </div>
+    
+    <div class="anatomy-marker" style="left: 71%; top: 20%;" data-organ="aorta">
+      <div class="anatomy-marker-label">Aorta</div>
+    </div>
+    
+    <div class="anatomy-marker" style="left: 73%; top: 28%;" data-organ="arteries">
+      <div class="anatomy-marker-label">Arteries</div>
+    </div>
+    
+    <div class="anatomy-marker" style="left: 58%; top: 22%;" data-organ="veins">
+      <div class="anatomy-marker-label">Veins</div>
+    </div>
+
+    <div class="anatomy-info-card" id="anatomy-card">
+      <h3 id="organ-name">Heart</h3>
+      <p id="organ-description">The heart is a muscular organ that pumps blood throughout your body.</p>
+      <p id="organ-function"><strong>Function:</strong> Circulates oxygen and nutrients to tissues.</p>
+      <div class="fun-fact" id="organ-fact">
+        <strong>Interesting fact:</strong> Your heart beats about 100,000 times per day!
+      </div>
+      <button class="close-card-btn" id="close-anatomy-card">Close</button>
+    </div>
+
+    <button class="anatomy-continue-btn" id="continue-anatomy">Continue Video</button>
+  </div>
+
+  <div class="style-overlay" id="style-overlay">
+    <div class="style-container">
+      <h2>Choose your style</h2>
+      <div class="style-options">
+        <button class="style-btn" data-url="https://youtu.be/I3Jgce8Ibvg">2D explainers</button>
+        <button class="style-btn" data-url="https://youtu.be/BLbHR7CQBrA">3D visualization</button>
+        <button class="style-btn" data-url="https://youtu.be/nBBRqCJNHi8">Mix motion design + real footage</button>
+      </div>
+      <button class="close-style-btn" id="close-style">Continue watching</button>
     </div>
   </div>
 
-  <script>
-    const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx4dXWCRX3laaAbyzFmohPqK72-rDDvMfAyRNLL1m2MDY4JFXug7OnNkfZciirxcqS_/exec';
+  <div class="interactive-overlay" id="overlay">
+    <div class="question-container">
+      <button class="back-btn" id="back-btn" data-tooltip="Watch Again"></button>
+      <div id="question-section">
+        <h2>Take a quiz - we'd appreciate your feedback!</h2>
+        <div class="options">
+          <button class="option-btn">Product or therapy area training</button>
+          <button class="option-btn">Medical device usage tutorials</button>
+          <button class="option-btn">Field force learning & updates</button>
+        </div>
+        <div class="custom-input-container">
+          <input type="text" class="custom-input" id="custom-answer" placeholder="Write your own option">
+          <button class="submit-custom-btn" id="submit-custom"></button>
+        </div>
+      </div>
+      
+      <div class="contact-info" id="contact-section">
+        <h3 style="font-size: 20px;">Connect with our Account Executive</h3>
+        <a href="https://meetings.hubspot.com/n-stetsiuk?uuid=40405510-b0a9-43b1-8cb6-4682a4008540" target="_blank" class="book-meeting-btn">Book a meeting</a>
+        <p>Email: <a href="#" id="email-link"><span id="email-display"></span></a></p>
+        <p>Phone: <a href="tel:+48799354938">+48 799 35 49 38</a></p>
+        <button class="watch-again-btn" id="watch-again">Watch Again</button>
+      </div>
+    </div>
+  </div>
+</div>
 
-    function deleteAnswer(timestamp, buttonElement) {
-      if (!confirm('Are you sure you want to delete this answer?')) {
-        return;
-      }
+<script>
+  const player = videojs('my-video');
+  
+  const anatomyOverlay = document.getElementById('anatomy-overlay');
+  const endOverlay = document.getElementById('overlay');
+  
+  const anatomyMarkers = document.querySelectorAll('.anatomy-marker');
+  const anatomyCard = document.getElementById('anatomy-card');
+  const anatomyHint = document.querySelector('.anatomy-hint');
+  const continueAnatomyBtn = document.getElementById('continue-anatomy');
+  const closeAnatomyCardBtn = document.getElementById('close-anatomy-card');
+  
+  const questionSection = document.getElementById('question-section');
+  const contactSection = document.getElementById('contact-section');
+  const optionButtons = document.querySelectorAll('.option-btn');
+  const watchAgainBtn = document.getElementById('watch-again');
+  const backBtn = document.getElementById('back-btn');
+  const customAnswerInput = document.getElementById('custom-answer');
+  const submitCustomBtn = document.getElementById('submit-custom');
+  
+  let anatomyShown = false;
+  let endShown = false;
 
-      // Визуально скрываем элемент сразу
-      const answerItem = buttonElement.closest('.answer-item');
-      answerItem.style.opacity = '0.5';
-      buttonElement.disabled = true;
 
-      // Отправляем запрос на удаление с timestamp
-      fetch(GOOGLE_SCRIPT_URL + '?action=delete&timestamp=' + encodeURIComponent(timestamp), {
-        method: 'GET'
-      })
-        .then(response => response.json())
-        .then(data => {
-          if (data.success) {
-            // Удаляем элемент из DOM
-            answerItem.remove();
-            // Перезагружаем статистику
-            loadStats();
-          } else {
-            alert('Error deleting answer: ' + (data.error || 'Unknown error'));
-            answerItem.style.opacity = '1';
-            buttonElement.disabled = false;
-          }
-        })
-        .catch(error => {
-          alert('Error: ' + error.message);
-          answerItem.style.opacity = '1';
-          buttonElement.disabled = false;
-        });
+  const anatomyData = {
+    heart: {
+      name: "Heart",
+      description: "The heart is a muscular organ that pumps blood throughout your body, delivering oxygen and nutrients to all tissues.",
+      function: "Pumps oxygenated blood to the body and deoxygenated blood to the lungs.",
+      fact: "Your heart beats about 100,000 times per day, pumping roughly 2,000 gallons of blood!"
+    },
+    aorta: {
+      name: "Aorta",
+      description: "The aorta is the largest artery in the body, originating from the left ventricle of the heart.",
+      function: "Carries oxygen-rich blood from the heart to all parts of the body.",
+      fact: "The aorta can be as thick as a garden hose and is about 1 foot long in adults!"
+    },
+    arteries: {
+      name: "Arteries",
+      description: "Arteries are blood vessels that carry blood away from the heart to various parts of the body.",
+      function: "Transport oxygenated blood under high pressure to organs and tissues.",
+      fact: "Arteries have thick, elastic walls that can withstand high blood pressure from each heartbeat!"
+    },
+    veins: {
+      name: "Veins",
+      description: "Veins are blood vessels that carry blood back to the heart from the body's tissues.",
+      function: "Return deoxygenated blood to the heart and have valves to prevent backflow.",
+      fact: "Veins contain about 70% of your body's blood volume at any given time!"
     }
+  };
 
-    function loadStats() {
-      const content = document.getElementById('content');
-      const spinner = document.getElementById('spinner');
-      const refreshBtn = document.getElementById('refresh-btn');
-      
-      // Проверяем если это первая загрузка (есть loading)
-      const isInitialLoad = content.querySelector('.loading') !== null;
-      
-      // Показываем spinner и блокируем кнопку
-      if (spinner) {
-        spinner.classList.add('visible');
-        refreshBtn.disabled = true;
-      }
-
-      fetch(GOOGLE_SCRIPT_URL)
-        .then(response => response.json())
-        .then(data => {
-          if (data.success) {
-            if (isInitialLoad) {
-              // Первая загрузка - рисуем всё
-              displayStats(data);
-            } else {
-              // Обновление - только данные
-              updateStatsData(data);
-            }
-          } else {
-            if (isInitialLoad) {
-              content.innerHTML = '<div class="error">Error loading data: ' + data.error + '</div>';
-            }
-          }
-        })
-        .catch(error => {
-          if (isInitialLoad) {
-            content.innerHTML = '<div class="error">Error: ' + error.message + '</div>';
-          }
-        })
-        .finally(() => {
-          // Скрываем spinner и разблокируем кнопку
-          if (spinner) {
-            spinner.classList.remove('visible');
-            refreshBtn.disabled = false;
-          }
-        });
+  player.on('timeupdate', function() {
+    const t = player.currentTime();
+    
+    if (t >= 39 && t < 39.5 && !anatomyShown) {
+      player.pause();
+      anatomyOverlay.classList.add('visible');
+      anatomyShown = true;
     }
-
-    function updateStatsData(data) {
-      const total = data.totalResponses;
-      
-      // Обновляем цифры в карточках
-      const statNumbers = document.querySelectorAll('.stat-number');
-      if (statNumbers[0]) statNumbers[0].textContent = total;
-      if (statNumbers[1]) statNumbers[1].textContent = total - data.customAnswers.length;
-      if (statNumbers[2]) statNumbers[2].textContent = data.customAnswers.length;
-      
-      // Обновляем заголовок Custom Answers
-      const customAnswersTitle = document.querySelector('.custom-answers h2');
-      if (customAnswersTitle) {
-        customAnswersTitle.textContent = `Custom Answers (${data.customAnswers.length})`;
-      }
-      
-      // Пересчитываем статистику для графиков
-      const statsArray = Object.entries(data.stats).map(([name, count]) => ({
-        name: name,
-        count: count,
-        percentage: total > 0 ? (count / total * 100).toFixed(1) : 0
-      }));
-      statsArray.sort((a, b) => b.count - a.count);
-      
-      // Обновляем графики
-      const optionBars = document.querySelectorAll('.option-bar');
-      statsArray.forEach((stat, index) => {
-        if (optionBars[index]) {
-          const countSpan = optionBars[index].querySelector('.option-name span:last-child');
-          const progressFill = optionBars[index].querySelector('.progress-fill');
-          
-          if (countSpan) countSpan.textContent = `${stat.count} (${stat.percentage}%)`;
-          if (progressFill) progressFill.style.width = `${stat.percentage}%`;
-        }
-      });
-      
-      // Обновляем Custom Answers
-      if (data.customAnswers.length > 0) {
-        const answersContainer = document.getElementById('answers-container');
-        const showMoreBtn = document.getElementById('show-more-btn');
-        const defaultAnswersCount = 5;
-        
-        if (answersContainer) {
-          let answersHtml = '';
-          data.customAnswers.slice().reverse().forEach((answer, index) => {
-            const date = new Date(answer.timestamp);
-            const timeStr = date.toLocaleString();
-            const isHidden = index >= defaultAnswersCount ? 'hidden' : '';
-            const timestamp = answer.timestamp; // Передаем timestamp для точного поиска
-            
-            answersHtml += `
-              <div class="answer-item ${isHidden}" data-answer-index="${index}">
-                <div class="answer-content">
-                  <div class="answer-text">${escapeHtml(answer.answer)}</div>
-                  <div class="answer-time">${timeStr}</div>
-                </div>
-                <button class="delete-answer-btn" onclick="deleteAnswer('${timestamp}', this)" title="Delete answer">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2M10 11v6M14 11v6"/>
-                  </svg>
-                </button>
-              </div>
-            `;
-          });
-          
-          answersContainer.innerHTML = answersHtml;
-          
-          // Обновляем кнопку Show More
-          if (showMoreBtn) {
-            if (data.customAnswers.length > defaultAnswersCount) {
-              showMoreBtn.classList.remove('hidden');
-              showMoreBtn.textContent = `Show all ${data.customAnswers.length} answers`;
-            } else {
-              showMoreBtn.classList.add('hidden');
-            }
-          }
-        }
-      }
+    
+    if (t >= 58 && t < 58.5 && !endShown) {
+      player.pause();
+      endOverlay.classList.add('visible');
+      endShown = true;
     }
+  });
 
-    function displayStats(data) {
-      const content = document.getElementById('content');
+  anatomyMarkers.forEach(function(marker) {
+    marker.addEventListener('click', function() {
+      const organ = marker.getAttribute('data-organ');
+      const data = anatomyData[organ];
       
-      // Подсчитываем процент для каждой опции
-      const total = data.totalResponses;
-      const statsArray = Object.entries(data.stats).map(([name, count]) => ({
-        name: name,
-        count: count,
-        percentage: total > 0 ? (count / total * 100).toFixed(1) : 0
-      }));
-
-      // Сортируем по количеству голосов
-      statsArray.sort((a, b) => b.count - a.count);
-
-      // Определяем сколько показывать по умолчанию
-      const defaultAnswersCount = 5;
-      const hasMoreAnswers = data.customAnswers.length > defaultAnswersCount;
-
-      let html = `
-        <div class="main-layout">
-          <div class="left-column">
-            <button class="refresh-btn" id="refresh-btn" onclick="loadStats()">
-              <span class="spinner" id="spinner"></span>
-              <span>Refresh Data</span>
-            </button>
-            <div class="stats-grid">
-              <div class="stat-card">
-                <h2>Total Responses</h2>
-                <div class="stat-number">${total}</div>
-                <div class="stat-label">answers collected</div>
-              </div>
-              
-              <div class="stat-card">
-                <h2>Standard Options</h2>
-                <div class="stat-number">${total - data.customAnswers.length}</div>
-                <div class="stat-label">predefined choices</div>
-              </div>
-              
-              <div class="stat-card">
-                <h2>Custom Answers</h2>
-                <div class="stat-number">${data.customAnswers.length}</div>
-                <div class="stat-label">unique responses</div>
-              </div>
-            </div>
-
-            <div class="options-stats">
-              <h2>Response Distribution</h2>
-      `;
-
-      statsArray.forEach(stat => {
-        html += `
-          <div class="option-bar">
-            <div class="option-name">
-              <span>${stat.name}</span>
-              <span>${stat.count} (${stat.percentage}%)</span>
-            </div>
-            <div class="progress-bar">
-              <div class="progress-fill" style="width: ${stat.percentage}%"></div>
-            </div>
-          </div>
-        `;
-      });
-
-      html += `
-            </div>
-          </div>
-      `;
-
-      // Правая колонка с кастомными ответами
-      if (data.customAnswers.length > 0) {
-        html += `
-          <div class="custom-answers">
-            <h2>Custom Answers (${data.customAnswers.length})</h2>
-            <div class="answers-container" id="answers-container">
-        `;
-
-        // Показываем ответы в обратном порядке (новые сверху)
-        data.customAnswers.slice().reverse().forEach((answer, index) => {
-          const date = new Date(answer.timestamp);
-          const timeStr = date.toLocaleString();
-          const isHidden = index >= defaultAnswersCount ? 'hidden' : '';
-          const timestamp = answer.timestamp; // Передаем timestamp для точного поиска
-          
-          html += `
-            <div class="answer-item ${isHidden}" data-answer-index="${index}">
-              <div class="answer-content">
-                <div class="answer-text">${escapeHtml(answer.answer)}</div>
-                <div class="answer-time">${timeStr}</div>
-              </div>
-              <button class="delete-answer-btn" onclick="deleteAnswer('${timestamp}', this)" title="Delete answer">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2M10 11v6M14 11v6"/>
-                </svg>
-              </button>
-            </div>
-          `;
-        });
-
-        html += `
-            </div>
-        `;
-
-        // Кнопка "Show more" если есть скрытые ответы
-        if (hasMoreAnswers) {
-          html += `
-            <button class="show-more-btn" id="show-more-btn" onclick="toggleAllAnswers()">
-              Show all ${data.customAnswers.length} answers
-            </button>
-          `;
-        }
-
-        html += `</div>`;
-      }
-
-      html += '</div>';
-
-      content.innerHTML = html;
-    }
-
-    function toggleAllAnswers() {
-      const hiddenAnswers = document.querySelectorAll('.answer-item.hidden');
-      const btn = document.getElementById('show-more-btn');
+      document.getElementById('organ-name').textContent = data.name;
+      document.getElementById('organ-description').textContent = data.description;
+      document.getElementById('organ-function').innerHTML = '<strong>Function:</strong> ' + data.function;
+      document.getElementById('organ-fact').innerHTML = '<strong>Interesting fact:</strong> ' + data.fact;
       
-      if (hiddenAnswers.length > 0) {
-        // Показываем все
-        hiddenAnswers.forEach(item => item.classList.remove('hidden'));
-        btn.textContent = 'Show less';
-      } else {
-        // Скрываем все кроме первых 5
-        const allAnswers = document.querySelectorAll('.answer-item');
-        allAnswers.forEach((item, index) => {
-          if (index >= 5) {
-            item.classList.add('hidden');
-          }
-        });
-        const total = allAnswers.length;
-        btn.textContent = `Show all ${total} answers`;
-      }
+      anatomyCard.classList.add('visible');
+      anatomyHint.classList.add('hidden');
+    });
+  });
+
+  closeAnatomyCardBtn.addEventListener('click', function() {
+    anatomyCard.classList.remove('visible');
+    anatomyHint.classList.remove('hidden');
+  });
+
+  continueAnatomyBtn.addEventListener('click', function() {
+    anatomyOverlay.classList.remove('visible');
+    anatomyCard.classList.remove('visible');
+    anatomyHint.classList.remove('hidden');
+    player.play();
+  });
+
+  player.on('ended', function() {
+    endOverlay.classList.add('visible');
+  });
+
+  optionButtons.forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      // Отправляем данные в Google Sheets
+      var selectedOption = btn.textContent;
+      sendToGoogleSheets(selectedOption, '');
+      
+      questionSection.style.display = 'none';
+      contactSection.classList.add('visible');
+      backBtn.setAttribute('data-tooltip', 'Back');
+    });
+  });
+
+  submitCustomBtn.addEventListener('click', function() {
+    if (customAnswerInput.value.trim() !== '') {
+      // Отправляем данные в Google Sheets
+      sendToGoogleSheets('Custom answer', customAnswerInput.value);
+      
+      questionSection.style.display = 'none';
+      contactSection.classList.add('visible');
+      backBtn.setAttribute('data-tooltip', 'Back');
     }
+  });
 
-    function escapeHtml(text) {
-      const div = document.createElement('div');
-      div.textContent = text;
-      return div.innerHTML;
+  customAnswerInput.addEventListener('focus', function() {
+    if (this.value === '') {
+      this.placeholder = '';
     }
+  });
 
-    // Загружаем статистику при загрузке страницы
-    loadStats();
+  customAnswerInput.addEventListener('blur', function() {
+    if (this.value === '') {
+      this.placeholder = 'Write your own option';
+    }
+  });
 
-    // Автообновление каждые 30 секунд
-    setInterval(loadStats, 30000);
-  </script>
+  customAnswerInput.addEventListener('keypress', function(e) {
+    if (e.key === 'Enter' && customAnswerInput.value.trim() !== '') {
+      questionSection.style.display = 'none';
+      contactSection.classList.add('visible');
+    }
+  });
+
+  backBtn.addEventListener('click', function() {
+    // Если показана секция контактов, возвращаемся к вопросам
+    if (contactSection.classList.contains('visible')) {
+      contactSection.classList.remove('visible');
+      questionSection.style.display = 'block';
+      customAnswerInput.value = ''; // Очищаем поле ввода
+      backBtn.setAttribute('data-tooltip', 'Watch Again');
+    } else {
+      // Если показана секция вопросов, работаем как Watch Again
+      anatomyShown = false;
+      endShown = false;
+      player.currentTime(0);
+      endOverlay.classList.remove('visible');
+      questionSection.style.display = 'block';
+      contactSection.classList.remove('visible');
+      customAnswerInput.value = ''; // Очищаем поле ввода
+      player.play();
+    }
+  });
+
+  watchAgainBtn.addEventListener('click', function() {
+    // Сбрасываем все флаги триггеров
+    anatomyShown = false;
+    endShown = false;
+    
+    // Сбрасываем видео и UI
+    player.currentTime(0);
+    endOverlay.classList.remove('visible');
+    questionSection.style.display = 'block';
+    contactSection.classList.remove('visible');
+    player.play();
+  });
+
+  player.on('loadedmetadata', function() {
+    const duration = player.duration();
+    
+    const progressControl = player.controlBar.progressControl;
+    const bar = progressControl.seekBar.el();
+
+    const markers = [
+      { time: 39, label: 'Cardiovascular System' },
+      { time: 58, label: 'Interactive Question' }
+    ];
+
+    markers.forEach(function(m) {
+      const marker = document.createElement('div');
+      marker.className = 'vjs-marker';
+      marker.style.left = (m.time / duration * 100) + '%';
+
+      const tooltip = document.createElement('div');
+      tooltip.className = 'tooltip';
+      tooltip.textContent = m.label;
+
+      marker.appendChild(tooltip);
+      bar.appendChild(marker);
+    });
+  });
+
+  // Функция для отправки данных в Google Sheets
+  function sendToGoogleSheets(option, customAnswer) {
+    var url = 'https://script.google.com/macros/s/AKfycbx4dXWCRX3laaAbyzFmohPqK72-rDDvMfAyRNLL1m2MDY4JFXug7OnNkfZciirxcqS_/exec';
+    
+    var data = {
+      option: option,
+      customAnswer: customAnswer
+    };
+    
+    fetch(url, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data)
+    }).then(function() {
+      console.log('Data sent to Google Sheets');
+    }).catch(function(error) {
+      console.error('Error sending data:', error);
+    });
+  }
+
+  // Email protection from bots
+  (function() {
+    const user = 'sales';
+    const domain = 'nanobotmedical' + '.' + 'com';
+    const email = user + '@' + domain;
+    const emailLink = document.getElementById('email-link');
+    const emailDisplay = document.getElementById('email-display');
+    if (emailLink && emailDisplay) {
+      emailLink.href = 'mailto:' + email;
+      emailDisplay.textContent = email;
+    }
+  })();
+</script>
+
 </body>
 </html>
